@@ -9,23 +9,27 @@ require(ggplot2)
 require(reshape2)
 require(moments)
 require(gridExtra)
+require(shiny)
 
 ## import metadata
 metadata <- read.csv("metadata.csv", 
                      check.names=FALSE, 
                      stringsAsFactors=FALSE)
-subsetMetadata <- metadata
+#subsetMetadata <- metadata
+
+## Import data
+experimentalData <- read.csv("experimental_data.csv", 
+                         check.names = FALSE, 
+                         stringsAsFactors=FALSE)
+
+print(names(experimentalData))
+selectedNames <- readline(prompt="Input required columns: ")
 
 ## setupOutput
 # needs setting up internally rather than importing as file
 outputFile <- read.csv("output.csv", 
                        check.names = FALSE, 
                        stringsAsFactors=FALSE)
-
-## Import data
-experimentalData <- read.csv("experimental_data.csv", 
-                         check.names = FALSE, 
-                         stringsAsFactors=FALSE)
 
 ## required metadata
 # requiredMetadata <- read.csv("GLA_database_required_columns.csv", 
@@ -40,6 +44,19 @@ experimentalData <- read.csv("experimental_data.csv",
 
 ## TO DO:
 # 1) Match the list of subjects in the metadata list with the experimental data list
+
+## subset the metadata to match the experimental data list
+
+sum(is.element(metadata$id,experimentalData$id))
+
+subsetMetadata <- metadata[which(is.element(metadata$id,experimentalData$id)),]
+
+subsetMetadata <- subsetMetadata[order(subsetMetadata$baseStudyNumber),]
+
+cytokineData <- cytokineData[order(cytokineData$GLAnumber),]
+
+subsetMetadata$baseStudyNumber == cytokineData$GLAnumber
+
 # 2) Import details of columns to do stats on
 # 3) Find the biofluid type in column headers if present
 # 4) Calculate liver scores
