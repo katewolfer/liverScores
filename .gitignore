@@ -37,3 +37,5 @@ rsconnect/
 
 # other files
 metadata.csv
+experimental_data.csv
+output.csv
