@@ -46,7 +46,51 @@ subMetadata <- subsetMetadata(metadata, experimentalData)
 
 # 3) Find the biofluid type in column headers if present
 
+# STEP 1: match up any biofluids - simplifies plotting later
+# user defined additions
+source("userKey.R")
+userList <- userKey()
+
+# call predefined list, add user inputs
+source("getBiofluids.R")
+biofluidsList <- getBiofluids()
+biofluidsList <- unique(c(userList, biofluidsList))
+
+# get experimental data column headers
 fetchColumns <- colnames(experimentalData)
+
+findBiofluidColumns <- matrix(data = FALSE,
+                              ncol = ncol(experimentalData), 
+                              nrow = length(biofluidsList))
+
+# find biofluids represented in column names
+for(findMatch in 1:length(biofluidsList)){
+  findOverlap <- grep(biofluidsList[findMatch], fetchColumns)
+  findBiofluidColumns[findMatch, findOverlap] <- TRUE
+}
+getHitsBio <- rowSums(findBiofluidColumns)
+representBio <- biofluidsList[which(getHits > 0)]
+
+# STEP 2: match up biofluid pairs
+trimColNames <- gsub("[^0-9]", "", fetchColumns)
+
+findPairMatches <- matrix(data = FALSE,
+                          ncol = ncol(experimentalData), 
+                          nrow = ncol(experimentalData))
+
+# find biofluids represented in column names
+for(findMatch in 1:length(biofluidsList)){
+  findOverlap <- grep(biofluidsList[findMatch], fetchColumns)
+  findBiofluidColumns[findMatch, findOverlap] <- TRUE
+}
+getHitsAnalyte <- rowSums(findBiofluidColumns)
+representAnalyte <- biofluidsList[which(getHits > 0)]
+
+
+
+
+
+
 
 # 4) Calculate liver scores
 # 5) Get the correlation etc. statistics for each comparison
