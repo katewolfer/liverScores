@@ -11,14 +11,16 @@ require(moments)
 require(gridExtra)
 require(shiny)
 
+metadataTitle <- "metadata.csv"
+experimentTitle <- "experimental_data.csv"
+
 ## import metadata
-metadata <- read.csv("metadata.csv", 
+metadata <- read.csv(metadataTitle, 
                      check.names=FALSE, 
                      stringsAsFactors=FALSE)
-#subsetMetadata <- metadata
 
 ## Import data
-experimentalData <- read.csv("experimental_data.csv", 
+experimentalData <- read.csv(experimentTitle, 
                              check.names = FALSE, 
                              stringsAsFactors=FALSE)
 
@@ -28,34 +30,24 @@ outputFile <- read.csv("output.csv",
                        check.names = FALSE, 
                        stringsAsFactors=FALSE)
 
-## required metadata
-# requiredMetadata <- read.csv("GLA_database_required_columns.csv", 
-#                              check.names = FALSE, 
-#                              stringsAsFactors=FALSE)
-
-# for calculating scores normally, probably to be removed
-# scoresData <- read.csv("GLA_score_columns_plus_scores_all_subset_04July2018.csv", 
-#                        check.names = FALSE, 
-#                        stringsAsFactors=FALSE)
-
 
 ## TO DO:
+
+
 # 1) Match the list of subjects in the metadata list with the experimental data list
 
-## subset the metadata to match the experimental data list
+## subset the metadata to match the experimental data list, reorder to ensure 
+# rows match
 
-sum(is.element(metadata$id,experimentalData$id))
-
-subsetMetadata <- metadata[which(is.element(metadata$id,experimentalData$id)),]
-
-subsetMetadata <- subsetMetadata[order(subsetMetadata$baseStudyNumber),]
-
-cytokineData <- cytokineData[order(cytokineData$GLAnumber),]
-
-subsetMetadata$baseStudyNumber == cytokineData$GLAnumber
+subMetadata <- subsetMetadata(metadata, experimentalData)
 
 # 2) Import details of columns to do stats on
+
+
 # 3) Find the biofluid type in column headers if present
+
+fetchColumns <- colnames(experimentalData)
+
 # 4) Calculate liver scores
 # 5) Get the correlation etc. statistics for each comparison
 # 6) Populate the output file
