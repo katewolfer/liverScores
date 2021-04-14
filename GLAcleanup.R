@@ -78,7 +78,7 @@ glasgowComa <- metadata$examinationGCStotal # neurological
 respiratory <- metadata$bloodsGasPfRatio # respiratory
 creatinine <- metadata$bloodsBCadmCrCI # renal
 RRT <- metadata$examinationRRT # renal
-platelets <- metadata$bloodsHaemPits # coagulation (10^9/L), also 10^3/mm^3, same number
+platelets <- metadata$bloodsHaemPlts # coagulation (10^9/L), also 10^3/mm^3, same number
 bilirubin <- metadata$bloodsBCadmTotalBrCI# liver
 MAP <- metadata$examinationMAPcalc # hypotension
 dopamine <- metadata$examinationDobutDose # (ug/kg/min) hypotension
@@ -106,7 +106,7 @@ dopamine <- as.numeric(paste(metadata$examinationDobutDose))
 creatinine <- as.numeric(paste(metadata$bloodsBCadmCrCI))
 epinephrine <- as.numeric(paste(metadata$examinationAdrenDose))
 norepinephrine <- as.numeric(paste(metadata$examinationNoradrDose))
-platelets <- as.numeric(paste(metadata$bloodsHaemPits))
+platelets <- as.numeric(paste(metadata$bloodsHaemPlts))
 RRT <- as.numeric(paste(metadata$examinationRRT))
 terlipressin <- as.numeric(paste(metadata$examinationTerlipressin))
 INR <- as.numeric(paste(metadata$bloodsHaemINR))
@@ -136,7 +136,9 @@ WBC <- as.numeric(paste(metadata$bloodsHaemWBC))
 INR <- as.numeric(paste(metadata$bloodsHaemINR)) # INR
 CLIF_ADscore <- NULL
 for (i in 1:length(age)) {
-  CLIF_ADscore[i] <- 10 * (0.03*age[i] + 0.66*log(creatinine[i]) + 1.71 * log(INR[i]) + 0.88*log(WBC[i]) - 0.05*Na[i] + 8) }
+  CLIF_ADscore[i] <- 10 * ((0.03*age[i]) + (0.66*log(creatinine[i])) + (1.71 * log(INR[i])) + (0.88*log(WBC[i])) - (0.05*Na[i]) + 8) }
+
+adjustAD <- round(CLIF_ADscore,0)
 metadata$CLIF_AD <- round(CLIF_ADscore,0)
 
 ###################################
@@ -162,22 +164,54 @@ for (i in 1: nrow(sumPressors)) {
 pressors <- as.numeric(sumPressors[,6])
 
 ## calculate organ failure scores
-source("calculateOrganFail.R")
-organFail <- calculateOrganFail(liverFail,kidneyFail,kidneyFail2,brainFail,coagFail,circFail,respFail1,respFail2, mechVent, pressors)
+source("calculateOrganFailFast.R")
+organFail <- calculateOrganFailFast(liverFail,kidneyFail,kidneyFail2,brainFail,coagFail,circFail,respFail1,respFail2, mechVent, pressors)
 
 # format required columns
 age <- as.numeric(paste(metadata$baseAge)) # age: years
 WBC <- as.numeric(paste(metadata$bloodsHaemWBC)) # WBC: *10^9 cells/L
 CLIFOFs <- organFail$score
 metadata$CLIFOFs <- organFail$score ## organ failure
-metadata$CLIFOFs[which(metadata$CLIFOFs == 1)] <- NA
+#metadata$CLIFOFs[which(metadata$CLIFOFs == 1)] <- NA
 
 ## calculate scores
-CLIFC_ACLFscore <- NULL
+CLIF_ACLF <- NULL
 for (i in 1:length(age)) {
-  CLIFC_ACLFscore[i] <- 10 * (0.33 * CLIFOFs[i] + 0.04 * age[i] + 0.63 * log(WBC[i]) - 2) }
-CLIF_ACLF <- cbind(liverFail,kidneyFail,kidneyFail2,brainFail,coagFail,circFail,respFail1,respFail2, mechVent, pressors, age, WBC, CLIFOFs, CLIFC_ACLFscore)
-metadata$CLIF_ACLF <- round(CLIFC_ACLFscore,0)
+  CLIF_ACLF[i] <- 10 * ((0.33 * CLIFOFs[i]) + (0.04 * age[i]) + (0.63 * log(WBC[i])) - 2) }
+
+CLIF_ACLF <- as.data.frame(cbind(liverFail,kidneyFail,kidneyFail2,brainFail,coagFail,circFail,
+                   respFail1,respFail2, mechVent, pressors, age, WBC, CLIFOFs, 
+                   CLIF_ACLF))
+
+adjustScore <- round(CLIF_ACLF$CLIF_ACLF,0)
+
+ACLFcheck1 <- cbind(organFail[,c(1,2,5,6)])
+ACLFcheck1[which(ACLFcheck1[,1] < 3),1] <- NA
+ACLFcheck1[which(ACLFcheck1[,2] < 3),2] <- NA
+ACLFcheck1[which(ACLFcheck1[,3] < 3),3] <- NA
+ACLFcheck1[which(ACLFcheck1[,4] < 3),4] <- NA
+ACLFcheck1[,5] <- apply(ACLFcheck1,1,sum, na.rm = TRUE)
+# ACLFcheck1a <- as.data.frame(ACLFcheck1 == 3)
+# ACLFcheck1a[,5] <- apply(ACLFcheck1a, 1, sum)
+
+ACLFcheck1 <- sort(c(which(ACLFcheck1[,5] == 3), which(ACLFcheck1[,5] == 0)))
+ACLFcheck2 <- which(kidneyFail < 1.5) # no ACLF
+ACLFcheck3 <- which(brainFail == 0) # no ACLF
+ACLFcheck4 <- which(brainFail <= 1) # no ACLF
+ACLFcheck5 <- intersect(ACLFcheck1, ACLFcheck2) # no ACLF
+ACLFcheck6 <- intersect(ACLFcheck4, ACLFcheck2) # no ACLF
+ACLFcheck7 <- intersect(ACLFcheck5, ACLFcheck6) # final no ACLF list
+
+## ACLF grade 1
+# ACLFcheck8 <- which(kidneyFail >= 2) # grade 1
+# ACLFcheck9 <- which(kidneyFail > 2 & kidneyFail >= 1.5) # grade 1
+# ACLFcheck10 <- sort(c(which(brainFail == 1), which(brainFail == 2))) # grade 1
+# ACLFcheck11 <- intersect(which(brainFail > 2), ACLFcheck9) # grade 1
+
+adjustScore[ACLFcheck7] <- "no ACLF"
+adjustAD[-ACLFcheck7] <- "no AD"
+metadata$CLIF_AD <- adjustAD
+metadata$CLIF_ACLF <- adjustScore
 
 #############################
 ## UKELD score calculation ##
@@ -212,7 +246,7 @@ metadata$qSOFA <- qSOFA
 ## Export cleaned data as .csv ##
 #################################
 
-write.csv(metadata, paste(fileName,"_CLEAN.csv", sep=""))
+write.csv(metadata, paste("CLEAN_", fileName, sep=""))
 
 ## output cleaned metadata for further manipulation
 return(metadata)
